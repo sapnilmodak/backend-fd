@@ -176,6 +176,3 @@ async def search_youtube(request: SearchRequest):
         raise HTTPException(status_code=500, detail=f"Failed to fetch video: {str(e)}")
 
 
-if __name__ == "__main__":
-    port = int(os.getenv("PORT", 8000))  # Render assigns a dynamic port
-    uvicorn.run(app, host="0.0.0.0", port=port)
