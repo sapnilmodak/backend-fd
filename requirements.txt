@@ -32,7 +32,7 @@ langsmith==0.3.8
 marshmallow==3.26.1
 multidict==6.1.0
 mypy-extensions==1.0.0
-numpy==2.2.3
+numpy>=1.26.4,<2
 openai==1.63.0
 orjson==3.10.15
 packaging==24.2
@@ -55,5 +55,5 @@ urllib3==2.3.0
 uvicorn==0.34.0
 validators==0.34.0
 yarl==1.18.3
-youtube-transcript-api
+youtube-transcript-api>=0.4.9
 zstandard==0.23.0
