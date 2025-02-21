@@ -12,6 +12,8 @@ from dotenv import load_dotenv
 import re
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from googleapiclient.discovery import build
+import time
+import random
 
 load_dotenv(".env.local")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -98,21 +100,29 @@ async def summarize_content(request: SummarizationRequest):
         # Load content from YouTube or Website
         if "youtube.com" in request.url or "youtu.be" in request.url:
             video_id = get_youtube_video_id(request.url)
-            try:
-                transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-                # Try to get the English transcript, fallback to another language if not available
-                transcript = None
+            transcript = None
+            for attempt in range(5):  # Retry up to 5 times
                 try:
-                    transcript = transcript_list.find_transcript(['en'])
-                except NoTranscriptFound:
-                    # Fallback to Hindi if English is not available
-                    transcript = transcript_list.find_transcript(['hi'])
-                transcript_text = transcript.fetch()
-                all_text = " ".join([entry["text"] for entry in transcript_text])
-                chunks = text_splitter.split_text(all_text)
-                docs = [Document(chunk, metadata={"source": request.url}) for chunk in chunks]
-            except Exception as e:
-                raise HTTPException(status_code=500, detail=f"Error loading YouTube transcript: {str(e)}")
+                    transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+                    try:
+                        transcript = transcript_list.find_transcript(['en'])
+                    except NoTranscriptFound:
+                        transcript = transcript_list.find_transcript(['hi'])
+                    break  # Exit loop if successful
+                except Exception as e:
+                    if "Too Many Requests" in str(e):
+                        wait_time = (2 ** attempt) + random.uniform(0, 1)
+                        print(f"Rate limit hit, retrying in {wait_time:.2f} seconds...")
+                        time.sleep(wait_time)
+                    else:
+                        raise HTTPException(status_code=500, detail=f"Error loading YouTube transcript: {str(e)}")
+            if not transcript:
+                raise HTTPException(status_code=500, detail="Failed to retrieve transcript after multiple attempts.")
+            
+            transcript_text = transcript.fetch()
+            all_text = " ".join([entry["text"] for entry in transcript_text])
+            chunks = text_splitter.split_text(all_text)
+            docs = [Document(chunk, metadata={"source": request.url}) for chunk in chunks]
         else:
             loader = UnstructuredURLLoader(
                 urls=[request.url], ssl_verify=False,
@@ -173,6 +183,4 @@ async def search_youtube(request: SearchRequest):
         return {"video_link": video_link}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch video: {str(e)}")
-
-
+        raise HTTPException(status_code=500, detail=f"Failed to fetch video: {str(e)}")
