@@ -109,6 +109,8 @@ async def summarize_content(request: SummarizationRequest):
                     except NoTranscriptFound:
                         transcript = transcript_list.find_transcript(['hi'])
                     break  # Exit loop if successful
+                except NoTranscriptFound:
+                    raise HTTPException(status_code=404, detail="Transcript not found for the video in the requested languages.")
                 except Exception as e:
                     if "Too Many Requests" in str(e):
                         wait_time = (2 ** attempt) + random.uniform(0, 1)
@@ -117,7 +119,7 @@ async def summarize_content(request: SummarizationRequest):
                     else:
                         raise HTTPException(status_code=500, detail=f"Error loading YouTube transcript: {str(e)}")
             if not transcript:
-                raise HTTPException(status_code=500, detail="Failed to retrieve transcript after multiple attempts.")
+                raise HTTPException(status_code=500, detail="Failed to retrieve transcript after multiple attempts. Please try again later or check if the video has a transcript available.")
             
             transcript_text = transcript.fetch()
             all_text = " ".join([entry["text"] for entry in transcript_text])
