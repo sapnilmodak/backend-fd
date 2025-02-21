@@ -80,7 +80,7 @@ class Document:
         self.metadata = metadata or {}
 
 @app.post("/summarize")
-def summarize_content(request: SummarizationRequest):
+async def summarize_content(request: SummarizationRequest):
     # Validate input
     if not request.url.strip() or not request.input.strip():
         raise HTTPException(status_code=400, detail="Please provide the necessary information.")
